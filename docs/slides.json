@@ -1,4 +1,10 @@
 {
-  "slides": [],
-  "updated": ""
+  "slides": [
+    "slides/slide_01.jpg",
+    "slides/slide_02.jpg",
+    "slides/slide_03.jpg",
+    "slides/slide_04.jpg",
+    "slides/slide_05.jpg"
+  ],
+  "updated": "2026-03-30 09:36:24"
 }
