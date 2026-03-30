@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+        }
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .slide.active {
+            opacity: 1;
+        }
+        .slide img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        #no-report {
+            color: #888;
+            font-family: Arial, sans-serif;
+            font-size: 2em;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="slideshow"></div>
+    <div id="no-report">No report available</div>
+
+    <script>
+        const SLIDE_DURATION = 10000; // 10 seconds per slide
+        const FADE_DURATION = 1000;   // 1 second fade
+        const REFRESH_INTERVAL = 300000; // check for updates every 5 minutes
+
+        let currentSlide = 0;
+        let slides = [];
+        let timer = null;
+
+        async function loadSlides() {
+            try {
+                const response = await fetch('slides.json?t=' + Date.now());
+                if (!response.ok) throw new Error('No slides.json');
+                const data = await response.json();
+                return data.slides || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function buildSlideshow(slideFiles) {
+            const container = document.getElementById('slideshow');
+            const noReport = document.getElementById('no-report');
+
+            if (slideFiles.length === 0) {
+                container.innerHTML = '';
+                noReport.style.display = 'block';
+                return;
+            }
+
+            noReport.style.display = 'none';
+            container.innerHTML = '';
+            slides = [];
+            currentSlide = 0;
+
+            slideFiles.forEach((file, i) => {
+                const div = document.createElement('div');
+                div.className = 'slide' + (i === 0 ? ' active' : '');
+                const img = document.createElement('img');
+                img.src = file + '?t=' + Date.now();
+                img.alt = 'Slide ' + (i + 1);
+                div.appendChild(img);
+                container.appendChild(div);
+                slides.push(div);
+            });
+
+            if (timer) clearInterval(timer);
+
+            if (slides.length > 1) {
+                timer = setInterval(nextSlide, SLIDE_DURATION);
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlide >= slides.length - 1) {
+                // Hold on the last slide — stop advancing
+                if (timer) clearInterval(timer);
+                return;
+            }
+
+            slides[currentSlide].classList.remove('active');
+            currentSlide++;
+            slides[currentSlide].classList.add('active');
+        }
+
+        async function init() {
+            const slideFiles = await loadSlides();
+            buildSlideshow(slideFiles);
+        }
+
+        // Periodically check for new content and reload if changed
+        let lastSlidesJson = '';
+        async function checkForUpdates() {
+            try {
+                const response = await fetch('slides.json?t=' + Date.now());
+                const text = await response.text();
+                if (text !== lastSlidesJson) {
+                    lastSlidesJson = text;
+                    const data = JSON.parse(text);
+                    buildSlideshow(data.slides || []);
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        init().then(() => {
+            // Store initial state for comparison
+            fetch('slides.json?t=' + Date.now())
+                .then(r => r.text())
+                .then(t => lastSlidesJson = t)
+                .catch(() => {});
+        });
+
+        setInterval(checkForUpdates, REFRESH_INTERVAL);
+    </script>
+</body>
+</html>
